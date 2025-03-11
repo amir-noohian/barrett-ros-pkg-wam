@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS geometry_msgs message_generation genmsg)
 ## Declare ROS messages and services ##
 #######################################
 
-add_service_files(
+add_service_files(DIRECTORY srv
   FILES
   JP_PID.srv
   JV_PID.srv

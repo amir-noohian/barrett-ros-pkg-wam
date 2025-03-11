@@ -40,6 +40,7 @@
 #include "wam_bringup/static_force_estimator_withg.h"
 #include "wam_bringup/get_jacobian_system.h"
 
+#include <barrett/systems/exposed_output.h>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -70,6 +71,8 @@
 #include "wam_msgs/RTOrtnPos.h"
 #include "wam_msgs/RTOrtnVel.h"
 #include "wam_msgs/MatrixMN.h"
+#include "wam_msgs/Gravity.h"
+#include "wam_msgs/CartForce.h"
 #include "std_srvs/Empty.h"
 #include "wam_srvs/BHandFingerPos.h"
 #include "wam_srvs/BHandGraspPos.h"
@@ -157,6 +160,37 @@ using systems::disconnect;
 using systems::reconnect;
 
 BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
+
+
+// ExposedInput monitoring system
+template<typename T>
+class ExposedInput: public systems::System, public systems::SingleInput<T> {
+public:
+	explicit ExposedInput(const std::string& sysName = "ExposedInput") :
+			systems::System(sysName), systems::SingleInput<T>(this) {
+	}
+
+	virtual ~ExposedInput() {
+		this->mandatoryCleanUp();
+	}
+
+	T getValue() {
+		return value;
+	}
+
+protected:
+
+	virtual void operate() {
+		value = this->input.getValue();
+	}
+
+public:
+	T value;
+
+private:
+	DISALLOW_COPY_AND_ASSIGN(ExposedInput);
+};
+
 
 //WamNode Class
 template<size_t DOF>
@@ -323,6 +357,12 @@ class WamNode
 		systems::GravityCompensator<DOF> gravityTerm;
 		std::ofstream outputFile; 
 		PrintToStream<cf_type> print;
+
+		//Gravity
+		ExposedInput<jt_type> exposedGravity;
+
+		// //Force
+		// ExposedInput<cf_type> exposedCartesianForce;
 		
 		//ros
 		ros::Time last_cart_vel_msg_time;
@@ -352,12 +392,16 @@ class WamNode
 		sensor_msgs::JointState wam_joint_state;
 		geometry_msgs::PoseStamped wam_pose;
 		wam_msgs::MatrixMN wam_jacobian_mn;
+		wam_msgs::Gravity wam_gravity;
+		wam_msgs::CartForce wam_cartforce;
 		wam_msgs::RTCartForce force_msg;
 
 		//Publishers
 		ros::Publisher wam_joint_state_pub;
 		ros::Publisher wam_pose_pub;
 		ros::Publisher wam_jacobian_mn_pub;
+		ros::Publisher wam_gravity_pub;
+		ros::Publisher wam_cartforce_pub;
 		ros::Publisher wam_estimated_contact_force_pub;
 
 		//Services
@@ -394,6 +438,7 @@ class WamNode
 		ros::ServiceServer cp_impedance_control_srv;
 
 		ros::ServiceServer disconnect_systems_srv;	
+		// ros::ServiceServer connect_systems_srv;
 		ros::ServiceServer joy_ft_base_srv;	
 		ros::ServiceServer joy_ft_tool_srv;	
 		
@@ -532,6 +577,12 @@ class WamNode
 		
 		void publishWam(ProductManager& pm);
 		void updateRT(ProductManager& pm);
+
+		void publishGravity(ProductManager& pm);
+		// void publishCartesianForce(ProductManager& pm);
+		void getGravity();
+		// void getCartesianForce();
+		// bool connectSystems(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
 		/*
 		bool handInitialize(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);

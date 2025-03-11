@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   
-  <name>wam_bringup</name>
+  <name>wam_bringup_wam</name>
   <version>0.1.0</version>
   <description>The wam_bringup package</description>
   <maintainer email="laurapetrich@ualberta.ca">laura</maintainer>

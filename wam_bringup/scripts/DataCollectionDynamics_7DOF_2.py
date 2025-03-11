@@ -9,6 +9,8 @@ import json
 import glob
 from wam_srvs.srv import Hold
 from numpy import linalg as LA
+import time
+import math
 
 '''
 from operator import truediv
@@ -62,15 +64,15 @@ class WAM(object):
         self.pos = []
         self.vel = []
         self.joint_state_data = []
-        self.joint_angle_bound = np.array([[-0.5, 0.5], [-2.5, -1.5], [-0.5, 0.5], [1.2, 2.2]]) # the reference angle is the home pose
-        self.num_joints = 4
-        self.joint = rospy.ServiceProxy('/leader/wam/hold_joint_pos', Hold) 
+        self.joint_angle_bound = np.array([[-2.0, 2.0], [-1.8, 1.8], [-2.0, 2.0], [-0.7, 0.7], [-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]]) # the reference angle is the zero pose.
+        self.num_joints = 7
+        self.joint = rospy.ServiceProxy('/wam/hold_joint_pos', Hold) 
         self.collect = False
         self._init_joint_states_listener()
 
         # initialize publisher for jnt_pos_cmd and jnt_vel_cmd
-        self.jnt_vel_pub = rospy.Publisher('/leader/wam/jnt_vel_cmd', RTJointVel, queue_size=1)
-        self.jnt_pos_pub = rospy.Publisher('/leader/wam/jnt_pos_cmd', RTJointPos, queue_size=1)
+        self.jnt_vel_pub = rospy.Publisher('/wam/jnt_vel_cmd', RTJointVel, queue_size=1)
+        self.jnt_pos_pub = rospy.Publisher('/wam/jnt_pos_cmd', RTJointPos, queue_size=1)
 
         self.pos_home = self._read_home_pos()
         print("home pos received:", self.pos_home)
@@ -78,13 +80,15 @@ class WAM(object):
 
     def _init_joint_states_listener(self):
         """set up joint states listener from WAM control computer"""
-        rospy.Subscriber('/leader/wam/joint_states', JointState, self._cb_joint_state)
+        rospy.Subscriber('/wam/joint_states', JointState, self._cb_joint_state)
         # rospy.spin() # i am not sure whether we should use it here or not
 
     def _cb_joint_state(self, data : JointState):
         self.pos = np.array(data.position)
         self.vel = np.array(data.velocity)
-        joint_state = {'time': data.header.stamp.secs+data.header.stamp.nsecs*10^(-9),
+        # print(data)
+        # print(data.header.stamp.nsecs*1e-9)
+        joint_state = {'time': data.header.stamp.secs+data.header.stamp.nsecs*1e-9,
                 'position' : data.position,
                 'velocity' : data.velocity,
                 'effort' : data.effort}
@@ -104,9 +108,9 @@ class WAM(object):
         q is a numpy array of length DoF that specifies the joint angles
         """
         # Communicate with /wam/joint_move service on control computer
-        rospy.wait_for_service('/leader/wam/joint_move')
+        rospy.wait_for_service('/wam/joint_move')
         try:
-            joint_move_service = rospy.ServiceProxy('/leader/wam/joint_move', JointMove)
+            joint_move_service = rospy.ServiceProxy('/wam/joint_move', JointMove)
             joint_move_service(pos_goal)
         except rospy.ServiceException as e:
             print("Service call failed: %s" % e)
@@ -128,20 +132,23 @@ class WAM(object):
     def go_home(self):
         self._wait_for_joint_states()
         self.joint_move(self.pos_home)
+    
+    def go_zero(self):
+        self._wait_for_joint_states()
+        self.joint_move([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     def stop(self):
-        self.joint_vel_cmd([0.0, 0.0, 0.0, 0.0])
+        self.joint_vel_cmd([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     def check_joint_bound(self):
         current_joint_angle = self.pos
 
         for i in range(self.num_joints):
             if current_joint_angle[i] > 0.05 + self.joint_angle_bound[i][1]:
-                print("kesafat")
-                print('Joint {} out of bound.'.format(i))
+                print('Joint {} out of bound.'.format(i+1))
                 return True
             elif current_joint_angle[i] < -0.05 + self.joint_angle_bound[i][0]:
-                print('JOint {} out of bound.'.format(i))
+                print('JOint {} out of bound.'.format(i+1))
                 return True
             
         return False
@@ -151,111 +158,97 @@ class DataRecorder(object):
         self.robot = robot
         self.joint_num = joint_num
         self.robot._wait_for_joint_states()
-        self.steps = 100
-        self.control_frequency = 50
+        self.MAX_TIME = 10
+        self.control_frequency = 500
         self.rate = rospy.Rate(self.control_frequency)
 
-    def write_data(self, name = "vis"):
-        data_id = len(glob.glob('/home/wam/data/friction_data/{}_*.json'.format(name)))
-        out_file = open("/home/wam/data/friction_data/{}_{}.json".format(name, data_id), "w")
+    def joint_traj(self, t, f=0.1, A=0.6):
+        f *= 2 * math.pi
+        q = A * np.array([0, np.sin(f*t), 0, np.sin(f*t), 0, 0, 0])
+        qdot = A * f * np.array([0, np.cos(f*t), 0, np.cos(f*t), 0, 0, 0])
+        return q, qdot
+
+    def joint_traj1(self, t, T=10):
+        L = 5
+        
+        x = [0.707990384021940, -0.0150146020506483,    0.000280191811242826,   -0.150424710183653, -0.542831263598882, 0.0285165790096300, -0.0379420078788927,    -0.000370896589483716,  -0.126234977048364, 0.110684006942012,  0.0679857584856881, -0.000160746280917686,  3.59730863728628e-05,   -0.608666198402881, 0.540805213111737,  -0.0433137281308812,    -0.000693832290851609,  -0.000400179294006102,  0.466199557165230,  -0.363779259613263]
+        
+        A2 = x[0:L]
+        B2 = x[L:2*L]
+        A4= x[2*L:3*L]
+        B4 = x[3*L:4*L]
+        omega = 2 * math.pi/T
+
+        theta2=0
+        theta4=0
+        thetad2=0
+        thetad4=0
+        thetadd2=0
+        thetadd4=0
+
+        for i in range(4):
+            theta2 = theta2 + (A2[i] * np.sin(omega*(i+1)*t) - B2[i] * np.cos(omega*(i+1)*t))/(omega*(i+1))
+            theta4 = theta4 + (A4[i] * np.sin(omega*(i+1)*t) - B4[i] * np.cos(omega*(i+1)*t))/(omega*(i+1))
+
+            thetad2 = thetad2 + (A2[i] * np.cos(omega*(i+1)*t) + B2[i] * np.sin(omega*(i+1)*t))
+            thetad4 = thetad4 + (A4[i] * np.cos(omega*(i+1)*t) + B4[i] * np.sin(omega*(i+1)*t))
+
+            thetadd2 = thetadd2 + (-A2[i] * np.sin(omega*(i+1)*t) + B2[i] * np.cos(omega*(i+1)*t)) * (omega*(i+1))
+            thetadd4 = thetadd4 + (-A4[i] * np.sin(omega*(i+1)*t) + B4[i] * np.cos(omega*(i+1)*t)) * (omega*(i+1))
+        
+        factor = 1
+        q = np.array([0, theta2, 0, theta4, 0, 0, 0]) * factor
+        qdot = np.array([0, thetad2, 0, thetad4, 0, 0, 0]) * factor
+        qdotdot = np.array([0, thetadd2, 0, thetadd4, 0, 0, 0]) * factor
+
+        return q, qdot
+
+
+    def write_data(self, name = "dynamics"):
+        data_id = len(glob.glob('/home/wam/data/dynamics_data/{}_*.json'.format(name)))
+        out_file = open("/home/wam/data/dynamics_data/{}_{}.json".format(name, data_id), "w")
         json.dump(self.robot.joint_state_data, out_file)
         out_file.close()
         print('trajectory colleced and saved')
         self.robot.joint_state_data = []
 
-    def collect_vis(self):
+    def collect_dynamics(self):
 
-        
-        count = 0
-        rospy.sleep(3)
-        self.robot.collect = True
-        while True:
-            velocity = [0.3, 0.0, 0.0, 0.0]
-            self.robot.joint_vel_cmd(velocity)
-            if robot.check_joint_bound() or count>self.steps:
-                break
-            count += 1
-            self.rate.sleep()
-        rospy.sleep(1)
-        print('positive movement done.')
-        self.robot.collect = False
-        self.robot.stop()
-        rospy.sleep(3)
-        self.robot.go_home()
-        rospy.sleep(4)
-        self.robot.joint(False)
-
-        self.robot.collect = True
-        count = 0
-        while True:
-            velocity = [-0.3, 0.0, 0.0, 0.0]
-            self.robot.joint_vel_cmd(velocity)
-            if robot.check_joint_bound() or count>self.steps:
-                break
-            count += 1
-            self.rate.sleep()
-        rospy.sleep(1)
-        print('negative movement done.')
-        self.robot.collect = False
-        self.robot.stop()
-        rospy.sleep(3)
-        self.robot.go_home()
-        rospy.sleep(4)
-        self.robot.joint(False)
-        
-        self.write_data("vis")
-
-    def collect_col(self):
-        
-        joint_velocity = 0
-        rospy.sleep(3)
-        self.robot.collect = True
-        while True:
-            joint_velocity += 0.01
-            velocity = [joint_velocity, 0.0, 0.0, 0.0]
-            self.robot.joint_vel_cmd(velocity)
-            velocity_error = np.abs(LA.norm(self.robot.vel) - joint_velocity)
-            if robot.check_joint_bound() or LA.norm(self.robot.vel)>0.02:
-                break
-            self.rate.sleep()
-        rospy.sleep(1)
-        print('positive movement done.')
-        self.robot.collect = False
-        self.robot.stop()
-        rospy.sleep(1)
-        self.robot.go_home()
+        self.robot.go_zero()
         rospy.sleep(2)
         self.robot.joint(False)
 
+        initial_angle, initial_velocity = self.joint_traj(0)
+        self.robot.joint_move(initial_angle)
+        rospy.sleep(2)
+        self.robot.joint(False)
+
+        start_time = time.time()
         self.robot.collect = True
-        joint_velocity = 0
         while True:
-            joint_velocity += 0.01
-            velocity = [-joint_velocity, 0.0, 0.0, 0.0]
-            self.robot.joint_vel_cmd(velocity)
-            velocity_error = np.abs(LA.norm(self.robot.vel) - joint_velocity)
-            if robot.check_joint_bound() or LA.norm(self.robot.vel)>0.02:
+            t = time.time() - start_time
+            joint_angle, joint_velocity = self.joint_traj(t)
+            self.robot.joint_vel_cmd(joint_velocity)
+            if robot.check_joint_bound() or t > self.MAX_TIME:
                 break
             self.rate.sleep()
-        rospy.sleep(1)
-        print('negative movement done.')
+        print('movement done.')
         self.robot.collect = False
         self.robot.stop()
-        rospy.sleep(1)
+        rospy.sleep(2)
         self.robot.go_home()
         rospy.sleep(2)
         self.robot.joint(False)
         
-        self.write_data("col")
+        self.write_data("dynamics")
 
 
 if __name__ == '__main__':
     rospy.init_node("data_collection_node")
     
     robot = WAM()
-    recorder = DataRecorder(robot, 4)
-    recorder.collect_vis()
-    recorder.collect_col() #Let's check the first one first!
+    recorder = DataRecorder(robot, 7)
+    recorder.collect_dynamics()
     rospy.spin() # I am not sure whether we should use it here or not : Faezeh: you need it to make the callbacks running on highest frq as possible!
 
 '''

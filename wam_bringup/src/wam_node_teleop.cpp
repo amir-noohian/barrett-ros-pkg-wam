@@ -1463,6 +1463,8 @@ void WamNode<DOF>::updateRT(ProductManager& pm) //systems::PeriodicDataLogger<de
         wam.moveTo(wam.getJointPositions()); // Holds current joint positions upon a RT message timeout
         cart_vel_status = ortn_vel_status = jnt_vel_status = jnt_pos_status=jnt_hand_tool_status = cart_pos_status = ortn_pos_status = false;
         ROS_WARN_STREAM("Fell out of RT control, holding joint positions");
+        wam.gravityCompensate(true); 
+
     }
 }
 

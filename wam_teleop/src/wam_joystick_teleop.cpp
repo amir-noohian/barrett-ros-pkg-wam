@@ -12,7 +12,7 @@
 #include "wam_srvs/BHandGraspVel.h"
 #include "wam_srvs/BHandSpreadVel.h"
 
-const int CNTRL_FREQ = 50; // Frequency at which we will publish our control messages.
+const int CNTRL_FREQ = 25; // Frequency at which we will publish our control messages.
 
 //WamTeleop Class
 class WamTeleop
@@ -106,7 +106,7 @@ void WamTeleop::init()
   bh_cmd_st = 0;// Initializing BarrettHand Command State to Zero
 
   //Subscribers
-  joy_sub = n_.subscribe < sensor_msgs::Joy > ("joy", 1, &WamTeleop::joyCallback, this); // /joy
+  joy_sub = n_.subscribe < sensor_msgs::Joy > ("/joy", 1, &WamTeleop::joyCallback, this); // /joy
 
   //Service Clients
   grasp_vel_srv = nh_.serviceClient<wam_srvs::BHandGraspVel>("grasp_vel");      // /bhand/grasp_vel
@@ -123,9 +123,9 @@ void WamTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy_msg)
 {
   //Set our publishing states back to false for new commands
   grsp_publish = sprd_publish = cart_publish = ortn_publish = home_publish = hold_publish = ortn_mode = false; 
- 
+  
   //Return with no deadman pressed or without first pose published yet.
-  if (!joy_msg->buttons[deadman_btn] | joy_msg->buttons[guardian_deadman_btn]) 
+  if ((!joy_msg->buttons[deadman_btn]) | (joy_msg->buttons[guardian_deadman_btn])) 
     return;
 
   if (joy_msg->buttons[ortn_btn]) //Checking our Orientation button state 
@@ -167,21 +167,22 @@ void WamTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy_msg)
 
 
   //Cartesian Velocity Portion
-  if ((joy_msg->axes[axis_x] > 0.25 || joy_msg->axes[axis_x] < -0.25) && !ortn_mode)
+  if ((joy_msg->axes[axis_x] > 0.25 || joy_msg->axes[axis_x] < -0.25)) //&& !ortn_mode)
   {
     req_xdir = joy_msg->axes[axis_x];
     cart_publish = true;
+    ROS_INFO("got vel");
   }
   else
     req_xdir = 0.0;
-  if ((joy_msg->axes[axis_y] > 0.25 || joy_msg->axes[axis_y] < -0.25) && !ortn_mode)
+  if ((joy_msg->axes[axis_y] > 0.25 || joy_msg->axes[axis_y] < -0.25))// && !ortn_mode)
   {
     req_ydir = joy_msg->axes[axis_y];
     cart_publish = true;
   }
   else
     req_ydir = 0.0;
-  if ((joy_msg->axes[axis_z] > 0.25 || joy_msg->axes[axis_z] < -0.25) && !ortn_mode)
+  if ((joy_msg->axes[axis_z] > 0.25 || joy_msg->axes[axis_z] < -0.25))// && !ortn_mode)
   {
     req_zdir = joy_msg->axes[axis_z];
     cart_publish = true;
@@ -260,13 +261,14 @@ void WamTeleop::update()
     go_home_srv.call(go_home); // Command WAM to go home
 
   //Check our published cartesian velocity state and act accordingly
-  if(cart_publish && !ortn_publish && !grsp_publish && !sprd_publish && !home_publish && !hold_publish) // if only cart_publish state is set
+  if(cart_publish)// && !ortn_publish && !grsp_publish && !sprd_publish && !home_publish && !hold_publish) // if only cart_publish state is set
   {
      cart_vel.direction[0] = req_xdir;
      cart_vel.direction[1] = req_ydir;
      cart_vel.direction[2] = req_zdir;
      cart_vel.magnitude = cart_mag;
      cart_vel_pub.publish(cart_vel);
+     ROS_INFO("published");
   }
   
   //Check our published orientation velocity state and act accordingly

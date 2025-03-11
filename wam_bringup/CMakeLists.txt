@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(wam_bringup)
+project(wam_bringup_wam)
 
 ## libbarrett
 find_package(Barrett REQUIRED)
@@ -71,6 +71,19 @@ catkin_package(
 #  include
 #)
 
+# add_executable(wam_node_original src/wam_node_original.cpp)
+# add_dependencies(wam_node_original wam_node_original_generate_messages_cpp)
+# target_link_libraries(
+#   wam_node_original
+#   barrett 
+#   ${catkin_LIBRARIES} 
+#   ${CURSES_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${GSL_LIBRARY}
+#   config++
+# #  ${XENOMAI_LIBRARIES}
+#   )
+
 add_executable(wam_node src/wam_node.cpp)
 add_dependencies(wam_node wam_node_generate_messages_cpp)
 target_link_libraries(
@@ -83,11 +96,11 @@ target_link_libraries(
   config++
 #  ${XENOMAI_LIBRARIES}
   )
-  
-add_executable(wam_node_teleop src/wam_node_teleop.cpp)
-add_dependencies(wam_node_teleop wam_node_teleop_generate_messages_cpp)
+
+add_executable(wam_node_gravity src/wam_node_gravity.cpp)
+add_dependencies(wam_node_gravity wam_node_gravity_generate_messages_cpp)
 target_link_libraries(
-  wam_node_teleop
+  wam_node_gravity
   barrett 
   ${catkin_LIBRARIES} 
   ${CURSES_LIBRARIES}
@@ -96,18 +109,31 @@ target_link_libraries(
   config++
 #  ${XENOMAI_LIBRARIES}
   )
+
+# add_executable(wam_node_teleop src/wam_node_teleop.cpp)
+# add_dependencies(wam_node_teleop wam_node_teleop_generate_messages_cpp)
+# target_link_libraries(
+#   wam_node_teleop
+#   barrett 
+#   ${catkin_LIBRARIES} 
+#   ${CURSES_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${GSL_LIBRARY}
+#   config++
+# #  ${XENOMAI_LIBRARIES}
+#   )
   
-add_executable(bhand_node src/bhand_node.cpp)
-add_dependencies(bhand_node bhand_node_generate_messages_cpp)
-target_link_libraries(
-  bhand_node
-  barrett 
-  ${catkin_LIBRARIES} 
-  ${CURSES_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${GSL_LIBRARY}
-#  ${XENOMAI_LIBRARIES}
-  )
+# add_executable(bhand_node src/bhand_node.cpp)
+# add_dependencies(bhand_node bhand_node_generate_messages_cpp)
+# target_link_libraries(
+#   bhand_node
+#   barrett 
+#   ${catkin_LIBRARIES} 
+#   ${CURSES_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${GSL_LIBRARY}
+# #  ${XENOMAI_LIBRARIES}
+#   )
 
 add_executable(wam_bringup src/wam_bringup.cpp)
 add_dependencies(wam_bringup wam_bringup_generate_messages_cpp)
@@ -121,15 +147,15 @@ target_link_libraries(
 #  ${XENOMAI_LIBRARIES}
   )
 
-add_executable(velocity_control src/cartesian_velocity_control.cpp)
-add_dependencies(velocity_control wam_bringup_generate_messages_cpp)
-target_link_libraries(
-  velocity_control
-  barrett 
-  ${catkin_LIBRARIES} 
-  ${CURSES_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${GSL_LIBRARY}
-#  ${XENOMAI_LIBRARIES}
-  )
+# add_executable(velocity_control src/cartesian_velocity_control.cpp)
+# add_dependencies(velocity_control wam_bringup_generate_messages_cpp)
+# target_link_libraries(
+#   velocity_control
+#   barrett 
+#   ${catkin_LIBRARIES} 
+#   ${CURSES_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${GSL_LIBRARY}
+# #  ${XENOMAI_LIBRARIES}
+#   )
 
