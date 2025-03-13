@@ -29,14 +29,14 @@
 #define BARRETT_SMF_VALIDATE_ARGS
 #include <barrett/standard_main_function.h>
 
-using namespace barrett;
-using namespace systems;
-using systems::connect;
+// using namespace barrett;
+using namespace barrett::systems;
+using barrett::systems::connect;
 BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
 
 
 template<size_t DOF>
-class OrientationControllerVariableGains : public systems::System  , public KinematicsInput<DOF>
+class OrientationControllerVariableGains : public barrett::systems::System  , public KinematicsInput<DOF>
 {
 	BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
 
@@ -97,7 +97,7 @@ protected:
 			angle -= 2.0*M_PI;
 		}
 
-		if (math::abs(angle) > 3.13) {	// a little dead-zone near the discontinuity at +/-180 degrees
+		if (barrett::math::abs(angle) > 3.13) {	// a little dead-zone near the discontinuity at +/-180 degrees
 			ct.setZero();
 		} else {
 		    tempVect = ProportionalGains ;				// copy the ProportiocalGains

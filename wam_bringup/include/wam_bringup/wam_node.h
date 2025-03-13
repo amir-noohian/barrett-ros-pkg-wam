@@ -117,7 +117,6 @@
 #include <barrett/standard_main_function.h>
 #include <barrett/systems/wam.h>
 #include <barrett/detail/stl_utils.h>
-#include <barrett/log.h>
 
 #include <libconfig.h++>
 #include <fcntl.h>
@@ -153,7 +152,7 @@ const double SPREAD_RATIO = 1001.40056;
 */
 const double SECOND_LINK_RATIO = 0.424068;
 
-using namespace barrett;
+// using namespace barrett;
 using barrett::detail::waitForEnter;
 using systems::connect;
 using systems::disconnect;
@@ -361,8 +360,8 @@ class WamNode
 		//Gravity
 		ExposedInput<jt_type> exposedGravity;
 
-		// //Force
-		// ExposedInput<cf_type> exposedCartesianForce;
+		//Force
+		ExposedInput<cf_type> exposedCartesianForce;
 		
 		//ros
 		ros::Time last_cart_vel_msg_time;
@@ -579,9 +578,9 @@ class WamNode
 		void updateRT(ProductManager& pm);
 
 		void publishGravity(ProductManager& pm);
-		// void publishCartesianForce(ProductManager& pm);
+		void publishCartesianForce(ProductManager& pm);
 		void getGravity();
-		// void getCartesianForce();
+		void getCartesianForce();
 		// bool connectSystems(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
 		/*

@@ -2,6 +2,8 @@
  * lpetrich 19/08/18
  */
 
+
+
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -21,6 +23,7 @@
 
 
 #include "ros/ros.h"
+
 #include "tf/transform_datatypes.h"
 
 #include <barrett/exception.h>
@@ -35,9 +38,9 @@
 
 using namespace barrett;
 using barrett::detail::waitForEnter;
-using systems::connect;
-using systems::disconnect;
-using systems::reconnect;
+using barrett::systems::connect;
+using barrett::systems::disconnect;
+using barrett::systems::reconnect;
 
 BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
 
@@ -49,7 +52,7 @@ cf_type scale(boost::tuple<cf_type, double> t)
 
 //haptics
 template <size_t DOF>
-	typename units::JointTorques<DOF>::type saturateJt(const typename units::JointTorques<DOF>::type& x, const typename units::JointTorques<DOF>::type& limit) 
+	typename barrett::units::JointTorques<DOF>::type saturateJt(const typename barrett::units::JointTorques<DOF>::type& x, const typename barrett::units::JointTorques<DOF>::type& limit) 
 	{
 		int index;
 		double minRatio;
@@ -60,7 +63,7 @@ template <size_t DOF>
 
 //Creating a templated multiplier for our real-time computation
 template<typename T1, typename T2, typename OutputType>
-	class Multiplier : public systems::System, public systems::SingleOutput<OutputType>
+	class Multiplier : public barrett::systems::System, public barrett::systems::SingleOutput<OutputType>
 	{
 	public:
 		Input<T1> input1;
@@ -70,7 +73,7 @@ template<typename T1, typename T2, typename OutputType>
 
 	public:
 		Multiplier(std::string sysName = "Multiplier") : 
-			systems::System(sysName), systems::SingleOutput<OutputType>(this), input1(this), input2(this) 
+			barrett::systems::System(sysName), barrett::systems::SingleOutput<OutputType>(this), input1(this), input2(this) 
 		{
 		}
 		virtual ~Multiplier() 
@@ -94,14 +97,14 @@ template<typename T1, typename T2, typename OutputType>
 	};
 
 //Creating a templated converter from Roll, Pitch, Yaw to Quaternion for real-time computation
-class ToQuaternion : public systems::SingleIO<math::Vector<3>::type, Eigen::Quaterniond>
+class ToQuaternion : public barrett::systems::SingleIO<barrett::math::Vector<3>::type, Eigen::Quaterniond>
 {
 	public:
 		Eigen::Quaterniond outputQuat;
 
 	public:
 		ToQuaternion(std::string sysName = "ToQuaternion") :
-			systems::SingleIO<math::Vector<3>::type, Eigen::Quaterniond>(sysName)
+			barrett::systems::SingleIO<barrett::math::Vector<3>::type, Eigen::Quaterniond>(sysName)
 		{
 		}
 		virtual ~ToQuaternion()

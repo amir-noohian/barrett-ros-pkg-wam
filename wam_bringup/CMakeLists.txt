@@ -60,7 +60,7 @@ include_directories(
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES wam_node
-#  CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs std_srvs tf wam_msgs wam_srvs
+ CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs std_srvs tf wam_msgs wam_srvs
 #  DEPENDS system_lib
 )
 
@@ -84,21 +84,21 @@ catkin_package(
 # #  ${XENOMAI_LIBRARIES}
 #   )
 
-add_executable(wam_node src/wam_node.cpp)
-add_dependencies(wam_node wam_node_generate_messages_cpp)
-target_link_libraries(
-  wam_node
-  barrett 
-  ${catkin_LIBRARIES} 
-  ${CURSES_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${GSL_LIBRARY}
-  config++
-#  ${XENOMAI_LIBRARIES}
-  )
+# add_executable(wam_node src/wam_node.cpp)
+# add_dependencies(wam_node wam_node_generate_messages_cpp)
+# target_link_libraries(
+#   wam_node
+#   barrett 
+#   ${catkin_LIBRARIES} 
+#   ${CURSES_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${GSL_LIBRARY}
+#   config++
+# #  ${XENOMAI_LIBRARIES}
+#   )
 
 add_executable(wam_node_gravity src/wam_node_gravity.cpp)
-add_dependencies(wam_node_gravity wam_node_gravity_generate_messages_cpp)
+add_dependencies(wam_node_gravity wam_node_gravity_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries(
   wam_node_gravity
   barrett 
@@ -135,17 +135,17 @@ target_link_libraries(
 # #  ${XENOMAI_LIBRARIES}
 #   )
 
-add_executable(wam_bringup src/wam_bringup.cpp)
-add_dependencies(wam_bringup wam_bringup_generate_messages_cpp)
-target_link_libraries(
-  wam_bringup
-  barrett 
-  ${catkin_LIBRARIES} 
-  ${CURSES_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${GSL_LIBRARY}
-#  ${XENOMAI_LIBRARIES}
-  )
+# add_executable(wam_bringup src/wam_bringup.cpp)
+# add_dependencies(wam_bringup wam_bringup_generate_messages_cpp)
+# target_link_libraries(
+#   wam_bringup
+#   barrett 
+#   ${catkin_LIBRARIES} 
+#   ${CURSES_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#   ${GSL_LIBRARY}
+# #  ${XENOMAI_LIBRARIES}
+#   )
 
 # add_executable(velocity_control src/cartesian_velocity_control.cpp)
 # add_dependencies(velocity_control wam_bringup_generate_messages_cpp)

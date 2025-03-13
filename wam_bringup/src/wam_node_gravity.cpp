@@ -108,7 +108,7 @@ void WamNode<DOF>::init(ProductManager& pm) {
     mypm = &pm;
     pm.getExecutionManager()->startManaging(ramp); // starting ramp manager
     pm.getExecutionManager()->startManaging(exposedGravity);
-    // pm.getExecutionManager()->startManaging(exposedCartesianForce);
+    pm.getExecutionManager()->startManaging(exposedCartesianForce);
 
 
     ROS_INFO("%zu-DOF WAM", DOF);
@@ -142,13 +142,14 @@ void WamNode<DOF>::init(ProductManager& pm) {
     wam_joint_state.effort.resize(DOF);
     wam_jacobian_mn.data.resize(DOF*6);
     wam_gravity.data.resize(DOF);
+    wam_cartforce.data.resize(3);
 
     //Publishing the following rostopics
     wam_joint_state_pub = n_.advertise < sensor_msgs::JointState > ("joint_states", 1);
     wam_pose_pub = n_.advertise < geometry_msgs::PoseStamped > ("pose", 1);
     wam_jacobian_mn_pub = n_.advertise < wam_msgs::MatrixMN > ("jacobian",1);
     wam_gravity_pub = n_.advertise < wam_msgs::Gravity > ("gravity", 1);
-    // wam_cartforce_pub = n_.advertise <wam_msgs::CartForce> ("cart_force", 1);
+    wam_cartforce_pub = n_.advertise <wam_msgs::CartForce> ("cart_force", 1);
     wam_estimated_contact_force_pub =  n_.advertise<wam_msgs::RTCartForce>("force_topic", 1);
     
     //Subscribing to the following rostopics
@@ -1063,22 +1064,22 @@ bool WamNode<DOF>::staticForceEstimation(wam_srvs::StaticForceEstimationwithG::R
     return true;
 } 
 
-// template<size_t DOF>
-// void WamNode<DOF>::getCartesianForce()
-// {   
+template<size_t DOF>
+void WamNode<DOF>::getCartesianForce()
+{   
     
-//     systems::forceConnect(wam.kinematicsBase.kinOutput, getWAMJacobian.kinInput);
-//     systems::forceConnect(getWAMJacobian.output, staticForceEstimator.Jacobian);
+    systems::forceConnect(wam.kinematicsBase.kinOutput, getWAMJacobian.kinInput);
+    systems::forceConnect(getWAMJacobian.output, staticForceEstimator.Jacobian);
 
-//     systems::forceConnect(wam.kinematicsBase.kinOutput, gravityTerm.kinInput);
-//     systems::forceConnect(wam.gravity.output, staticForceEstimator.g);
+    systems::forceConnect(wam.kinematicsBase.kinOutput, gravityTerm.kinInput);
+    systems::forceConnect(wam.gravity.output, staticForceEstimator.g);
 
-//     systems::forceConnect(wam.jtSum.output, staticForceEstimator.jtInput);
-//     systems::forceConnect(staticForceEstimator.cartesianForceOutput, exposedCartesianForce.input);
+    systems::forceConnect(wam.jtSum.output, staticForceEstimator.jtInput);
+    systems::forceConnect(staticForceEstimator.cartesianForceOutput, exposedCartesianForce.input);
 
-//     // force_estimated = true;
-//         //res.success = true;
-// } 
+    // force_estimated = true;
+        //res.success = true;
+} 
 
 
 
@@ -2351,24 +2352,24 @@ void WamNode<DOF>::publishGravity(ProductManager& pm) {
     wam_gravity_pub.publish(wam_gravity);
 }
 
-// //Function to update the WAM publisher for force
-// template<size_t DOF>
-// void WamNode<DOF>::publishCartesianForce(ProductManager& pm) {
-//     getCartesianForce();
-//     //Current values to be published
+//Function to update the WAM publisher for force
+template<size_t DOF>
+void WamNode<DOF>::publishCartesianForce(ProductManager& pm) {
+    getCartesianForce();
+    //Current values to be published
     
-//     cf_type cforce = exposedCartesianForce.getValue(); // for force
+    cf_type cforce = exposedCartesianForce.getValue(); // for force
 
-//     // ROS_INFO_STREAM("Gravity Vector: " << jg);
+    // ROS_INFO_STREAM("Gravity Vector: " << jg);
 
-//     //publishing wam_msgs/CartForce to wam/cart_force
-//     // wam_cartforce.data = cforce;
-//     for (size_t i = 0; i < 3; i++) {
-//         wam_cartforce.data[i] = cforce[i];
-//     }
+    //publishing wam_msgs/CartForce to wam/cart_force
+    // wam_cartforce.data = cforce;
+    for (size_t i = 0; i < 3; i++) {
+        wam_cartforce.data[i] = cforce[i];
+    }
     
-//     wam_cartforce_pub.publish(wam_cartforce);
-// }
+    wam_cartforce_pub.publish(wam_cartforce);
+}
 
 /*
 //Function to update the real-time control loops
@@ -2628,7 +2629,7 @@ int wam_main(int argc, char** argv, ProductManager& pm, systems::Wam<DOF>& wam)
         ros::spinOnce();
         wam_node.publishWam(pm);
         wam_node.publishGravity(pm);
-        // wam_node.publishCartesianForce(pm);
+        wam_node.publishCartesianForce(pm);
         wam_node.updateRT(pm);
         pub_rate.sleep();
     }
