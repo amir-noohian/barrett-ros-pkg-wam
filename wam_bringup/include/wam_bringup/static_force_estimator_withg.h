@@ -64,7 +64,7 @@ protected:
 
 		Eigen::ColPivHouseholderQR<Eigen::MatrixXd> system(J.transpose());
 
-		jt = jt_sys - (G);
+		jt = -jt_sys + (G);
 		estimatedF = system.solve(jt);
 
 		computedF << estimatedF[0], estimatedF[1], estimatedF[2];

@@ -1,3 +1,0 @@
-<launch>
-  <node name="wam_node_gravity" type="wam_node_gravity" pkg="wam_bringup_wam" output="screen" />
-</launch>
