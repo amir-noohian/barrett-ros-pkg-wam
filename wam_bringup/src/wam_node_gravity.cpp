@@ -134,6 +134,7 @@ void WamNode<DOF>::init(ProductManager& pm) {
                                 "wam/LowerWristYawJoint"
                              };
 
+
     std::vector < std::string > wam_joints(wam_jnts, wam_jnts + 7);
     wam_joint_state.name = wam_joints;
     wam_joint_state.name.resize(DOF);
