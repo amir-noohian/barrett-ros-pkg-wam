@@ -29,6 +29,8 @@
 
  */
 
+
+
 #include "wam_bringup/utilities.h"
 #include "wam_bringup/arm_linking.h"
 #include "wam_bringup/tool_force_application.h"
@@ -36,8 +38,10 @@
 #include "wam_bringup/path_normals_to_quaternion.h"
 #include "wam_bringup/tangential_velocity.h"
 #include "wam_bringup/orientation_controller_variable_gains.h"
-#include "wam_bringup/impedence_controller.h"
+// #include "wam_bringup/impedence_controller.h"
 #include "wam_bringup/static_force_estimator_withg.h"
+#include "wam_bringup/dynamic_force_estimator.h"
+#include "wam_bringup/dynamics.h"
 #include "wam_bringup/get_jacobian_system.h"
 
 #include <barrett/systems/exposed_output.h>
@@ -73,6 +77,7 @@
 #include "wam_msgs/MatrixMN.h"
 #include "wam_msgs/Gravity.h"
 #include "wam_msgs/CartForce.h"
+#include "wam_msgs/DynamicCartForce.h"
 #include "std_srvs/Empty.h"
 #include "wam_srvs/BHandFingerPos.h"
 #include "wam_srvs/BHandGraspPos.h"
@@ -160,6 +165,21 @@ using systems::reconnect;
 
 BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
 
+
+// Function to get a double parameter from an environment variable or return a default value
+double getEnvDouble(const std::string& varName, double defaultValue) {
+    const char* envVar = std::getenv(varName.c_str());
+    if (envVar) {
+        std::istringstream iss(envVar);
+        double value;
+        if (iss >> value) {
+            return value;
+        } else {
+            std::cerr << "Invalid double value for " << varName << std::endl;
+        }
+    }
+    return defaultValue;
+}
 
 // ExposedInput monitoring system
 template<typename T>
@@ -259,7 +279,7 @@ class WamNode
 
         // pid_control variables
         systems::PIDController<double, double> dynamic_pid_control;
-        ImpedanceController6DOF<DOF> ImpControl; // impedance controller for ForceTorqueBase
+        // ImpedanceController6DOF<DOF> ImpControl; // impedance controller for ForceTorqueBase
 		systems::ExposedOutput<cp_type> KxSet;
 		systems::ExposedOutput<cp_type> DxSet;
 		systems::ExposedOutput<cp_type> XdSet;
@@ -352,16 +372,27 @@ class WamNode
 
 		//Contace Force Estimation
 		StaticForceEstimatorwithG<DOF> staticForceEstimator;
+		DynamicForceEstimator<DOF> dynamicForceEstimator; 
+		Dynamics<DOF> dynamics;
 		getJacobian<DOF> getWAMJacobian;
 		systems::GravityCompensator<DOF> gravityTerm;
 		std::ofstream outputFile; 
 		PrintToStream<cf_type> print;
+
+		//Force
+		double h_omega_p_default = 25.0;
+		double h_omega_p;
+		systems::FirstOrderFilter<jv_type> hp;
+		systems::Gain<jv_type, double, ja_type> jaCur;
 
 		//Gravity
 		ExposedInput<jt_type> exposedGravity;
 
 		//Force
 		ExposedInput<cf_type> exposedCartesianForce;
+
+		//Dynamic Force
+		ExposedInput<cf_type> exposedDynamicCartesianForce;
 		
 		//ros
 		ros::Time last_cart_vel_msg_time;
@@ -393,6 +424,7 @@ class WamNode
 		wam_msgs::MatrixMN wam_jacobian_mn;
 		wam_msgs::Gravity wam_gravity;
 		wam_msgs::CartForce wam_cartforce;
+		wam_msgs::DynamicCartForce wam_dynamiccartforce;
 		wam_msgs::RTCartForce force_msg;
 
 		//Publishers
@@ -401,6 +433,7 @@ class WamNode
 		ros::Publisher wam_jacobian_mn_pub;
 		ros::Publisher wam_gravity_pub;
 		ros::Publisher wam_cartforce_pub;
+		ros::Publisher wam_dynamiccartforce_pub;
 		ros::Publisher wam_estimated_contact_force_pub;
 
 		//Services
@@ -408,7 +441,7 @@ class WamNode
 		ros::ServiceServer go_home_srv;
 		ros::ServiceServer haptic_sphere_srv;
 		ros::ServiceServer hold_jpos_srv;
-		ros::ServiceServer hold_cpos_srv;
+		// ros::ServiceServer hold_cpos_srv;
 		ros::ServiceServer hold_ortn_srv;
 		ros::ServiceServer hold_ortn2_srv;
 		ros::ServiceServer joint_move_srv;
@@ -438,8 +471,8 @@ class WamNode
 
 		ros::ServiceServer disconnect_systems_srv;	
 		// ros::ServiceServer connect_systems_srv;
-		ros::ServiceServer joy_ft_base_srv;	
-		ros::ServiceServer joy_ft_tool_srv;	
+		// ros::ServiceServer joy_ft_base_srv;	
+		// ros::ServiceServer joy_ft_tool_srv;	
 		
 		/*
 		// BHAND 
@@ -496,6 +529,7 @@ class WamNode
 			jtSat_cartVel(boost::bind(saturateJt<DOF>, _1, jtLimits)),
 			jtSat_ornSplit(boost::bind(saturateJt<DOF>, _1, jtLimits)), 
 			tangentGain(0.0),
+			jaCur(1.0),
 			normalForceGain(0.0),
 			setting(pm.getConfig().lookup(pm.getWamDefaultConfigPath())),
 			gravityTerm(setting["gravity_compensation"]),
@@ -533,14 +567,14 @@ class WamNode
 		bool jvPIDControl(wam_srvs::JV_PID::Request &req, wam_srvs::JV_PID::Response &res);
 		bool tpPIDControl(wam_srvs::TP_PID::Request &req, wam_srvs::TP_PID::Response &res);
 
-		bool joyForceTorqueBase(wam_srvs::ForceTorque::Request &req, wam_srvs::ForceTorque::Response &res);
-		bool joyForceTorqueTool(wam_srvs::ForceTorque::Request &req, wam_srvs::ForceTorque::Response &res);
+		// bool joyForceTorqueBase(wam_srvs::ForceTorque::Request &req, wam_srvs::ForceTorque::Response &res);
+		// bool joyForceTorqueTool(wam_srvs::ForceTorque::Request &req, wam_srvs::ForceTorque::Response &res);
 		
 		bool hapticSphere(wam_srvs::HapticSphere::Request &req, wam_srvs::HapticSphere::Response &res);
 		bool gravity(wam_srvs::GravityComp::Request &req, wam_srvs::GravityComp::Response &res);
 		bool goHome(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 		bool holdJPos(wam_srvs::Hold::Request &req, wam_srvs::Hold::Response &res);
-		bool holdCPos(wam_srvs::HoldGains::Request &req, wam_srvs::HoldGains::Response &res);
+		// bool holdCPos(wam_srvs::HoldGains::Request &req, wam_srvs::HoldGains::Response &res);
 		bool holdOrtn(wam_srvs::HoldGains::Request &req, wam_srvs::HoldGains::Response &res);
 		bool holdOrtn2(wam_srvs::Hold::Request &req, wam_srvs::Hold::Response &res);
 		bool jointMove(wam_srvs::JointMove::Request &req, wam_srvs::JointMove::Response &res);
@@ -579,8 +613,10 @@ class WamNode
 
 		void publishGravity(ProductManager& pm);
 		void publishCartesianForce(ProductManager& pm);
+		void publishDynamicCartesianForce(ProductManager& pm);
 		void getGravity();
 		void getCartesianForce();
+		void getDynamicCartesianForce();
 		// bool connectSystems(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
 		/*

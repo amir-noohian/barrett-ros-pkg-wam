@@ -26,6 +26,7 @@ add_message_files(DIRECTORY msg FILES
   WAMJointState.msg
   Gravity.msg
   CartForce.msg
+  DynamicCartForce.msg
 )
 
 ## Generate added messages and services with any dependencies listed here

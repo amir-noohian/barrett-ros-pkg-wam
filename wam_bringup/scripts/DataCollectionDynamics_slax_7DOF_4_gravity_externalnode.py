@@ -65,7 +65,7 @@ class WAM(object):
         self.vel = []
         self.joint_state_data = []
         self.joint_gravity_data = []
-        self.joint_angle_bound = np.array([[-2.0, 2.0], [-1.8, 1.8], [-2.0, 2.0], [-0.7, 0.7], [-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]]) # the reference angle is the zero pose.
+        self.joint_angle_bound = np.array([[-2.0, 2.0], [-1.8, 1.8], [-2.0, 2.0], [-0.7, 1.7], [-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]]) # the reference angle is the zero pose.
         self.num_joints = 7
         self.joint = rospy.ServiceProxy('/wam/hold_joint_pos', Hold) 
         self.collect = False
@@ -245,7 +245,7 @@ class DataRecorder(object):
             thetadd3 += (-A3[i-1] * np.sin(omega * i * t) + B3[i-1] * np.cos(omega * i * t)) * (omega * i)
             thetadd4 += (-A4[i-1] * np.sin(omega * i * t) + B4[i-1] * np.cos(omega * i * t)) * (omega * i)
 
-        factor = 0.8
+        factor = 0.9
         q = np.array([theta1, theta2, theta3*0.7, theta4, 0.0, 0.0, 0.0]) * factor
         qdot = np.array([thetad1, thetad2, thetad3*0.7, thetad4, 0.0, 0.0, 0.0]) * factor
         # qdotdot = np.array([thetadd1, thetadd2, thetadd3*0.7, thetadd4, 0.0, 0.0, 0.0]) * factor

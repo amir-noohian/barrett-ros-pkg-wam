@@ -4,7 +4,6 @@ project(wam_bringup_wam)
 ## libbarrett
 find_package(Barrett REQUIRED)
 include_directories(${BARRETT_INCLUDE_DIRS})
-include_directories(${catkin_INCLUDE_DIRS})
 
 ## GSL
 set(GSL_INCLUDE_DIRS "/usr/include/gsl")
@@ -15,9 +14,6 @@ set(GSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libgsl.so")
 include_directories(${GSL_INCLUDE_DIRS})
 link_directories(${GSL_LIBRARY_DIRS})
 
-## Curses
-find_package(Curses REQUIRED)
-include_directories(${CURSES_INCLUDE_DIRS})
 
 ## Boost
 find_package(Boost 1.71 COMPONENTS system thread REQUIRED)
@@ -46,11 +42,8 @@ find_package(catkin REQUIRED COMPONENTS
 #set(XENOMAI_INCLUDE_DIRS ${XENOMAI_INCLUDE_XENOMAI} ${XENOMAI_INCLUDE_GENERIC})
 #set(XENOMAI_LIBRARIES ${XENOMAI_XENOMAI} ${XENOMAI_NATIVE})
 
-include_directories(${XENOMAI_INCLUDE_DIRS})
-link_directories(${XENOMAI_LIBRARY_DIRS})
 
 ## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS system)
 
 include_directories(
   include
@@ -98,17 +91,18 @@ catkin_package(
 #   )
 
 add_executable(wam_node_gravity src/wam_node_gravity.cpp)
-add_dependencies(wam_node_gravity wam_node_gravity_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(wam_node_gravity ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 target_link_libraries(
   wam_node_gravity
-  barrett 
   ${catkin_LIBRARIES} 
   ${CURSES_LIBRARIES}
   ${Boost_LIBRARIES}
   ${GSL_LIBRARY}
   config++
+  barrett
 #  ${XENOMAI_LIBRARIES}
   )
+
 
 # add_executable(wam_node_teleop src/wam_node_teleop.cpp)
 # add_dependencies(wam_node_teleop wam_node_teleop_generate_messages_cpp)

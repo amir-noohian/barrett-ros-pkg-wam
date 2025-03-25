@@ -28,9 +28,11 @@
     Refactored by: Faezeh Haghverd 3/11/23
 */
 
+// #include <cmath>
 #include "ros/console.h"
-#include "wam_bringup/orientation_controller_variable_gains.h"
+// #include "wam_bringup/orientation_controller_variable_gains.h"
 #include "wam_bringup/wam_node.h"
+#include <barrett/systems/helpers.h>
 
 // Templated Initialization Function
 template<size_t DOF>
@@ -55,9 +57,6 @@ void WamNode<DOF>::init(ProductManager& pm) {
     systems_connected = false;
     force_estimated = false;
 
-
-    
-    
 
     // last_cart_vel_msg_time = ros::Time::now();
 
@@ -109,6 +108,7 @@ void WamNode<DOF>::init(ProductManager& pm) {
     pm.getExecutionManager()->startManaging(ramp); // starting ramp manager
     pm.getExecutionManager()->startManaging(exposedGravity);
     pm.getExecutionManager()->startManaging(exposedCartesianForce);
+    pm.getExecutionManager()->startManaging(exposedDynamicCartesianForce);
 
 
     ROS_INFO("%zu-DOF WAM", DOF);
@@ -120,8 +120,9 @@ void WamNode<DOF>::init(ProductManager& pm) {
    
     
 
-    //Contace Force Estimation
-    
+    //dynamic Force Estimation
+    h_omega_p = getEnvDouble("h_omega", h_omega_p_default);
+    hp.setHighPass(jv_type(h_omega_p), jv_type(h_omega_p));
 
 
     //Setting up WAM joint state publisher
@@ -144,6 +145,7 @@ void WamNode<DOF>::init(ProductManager& pm) {
     wam_jacobian_mn.data.resize(DOF*6);
     wam_gravity.data.resize(DOF);
     wam_cartforce.data.resize(3);
+    wam_dynamiccartforce.data.resize(3);
 
     //Publishing the following rostopics
     wam_joint_state_pub = n_.advertise < sensor_msgs::JointState > ("joint_states", 1);
@@ -151,6 +153,7 @@ void WamNode<DOF>::init(ProductManager& pm) {
     wam_jacobian_mn_pub = n_.advertise < wam_msgs::MatrixMN > ("jacobian",1);
     wam_gravity_pub = n_.advertise < wam_msgs::Gravity > ("gravity", 1);
     wam_cartforce_pub = n_.advertise <wam_msgs::CartForce> ("cart_force", 1);
+    wam_dynamiccartforce_pub = n_.advertise<wam_msgs::DynamicCartForce> ("dynamic_cart_force", 1);
     wam_estimated_contact_force_pub =  n_.advertise<wam_msgs::RTCartForce>("force_topic", 1);
     
     //Subscribing to the following rostopics
@@ -165,8 +168,8 @@ void WamNode<DOF>::init(ProductManager& pm) {
     //Advertising the following rosservices
     disconnect_systems_srv = n_.advertiseService("disconnect_systems", &WamNode::disconnectSystems, this);
     // connect_systems_srv = n_.advertiseService("connect_systems", &WamNode::connectSystems, this);
-    joy_ft_base_srv = n_.advertiseService("joy_force_torque_base", &WamNode::joyForceTorqueBase, this);
-    joy_ft_tool_srv = n_.advertiseService("joy_force_torque_tool", &WamNode::joyForceTorqueTool, this);
+    // joy_ft_base_srv = n_.advertiseService("joy_force_torque_base", &WamNode::joyForceTorqueBase, this);
+    // joy_ft_tool_srv = n_.advertiseService("joy_force_torque_tool", &WamNode::joyForceTorqueTool, this);
 
     gravity_srv = n_.advertiseService("gravity_comp", &WamNode::gravity, this);
     go_home_srv = n_.advertiseService("go_home", &WamNode::goHome, this);
@@ -181,7 +184,7 @@ void WamNode<DOF>::init(ProductManager& pm) {
     force_torque_base_time_srv = n_.advertiseService("force_torque_base_time", &WamNode::forceTorqueBaseTime,this);
 
     hold_jpos_srv = n_.advertiseService("hold_joint_pos", &WamNode::holdJPos, this);
-    hold_cpos_srv = n_.advertiseService("hold_cart_pos", &WamNode::holdCPos, this);
+    // hold_cpos_srv = n_.advertiseService("hold_cart_pos", &WamNode::holdCPos, this);
     hold_ortn_srv = n_.advertiseService("hold_ortn", &WamNode::holdOrtn, this);
     hold_ortn2_srv = n_.advertiseService("hold_ortn2", &WamNode::holdOrtn2, this);
     joint_move_srv = n_.advertiseService("joint_move", &WamNode::jointMove, this);
@@ -201,12 +204,16 @@ void WamNode<DOF>::init(ProductManager& pm) {
     stop_visual_fix = n_.advertiseService("stop_visual_fix", &WamNode::stopVisualFix, this);
     follow_path_srv = n_.advertiseService("follow_path", &WamNode::followPath,this);
     static_force_estimation_srv = n_.advertiseService("static_force_estimation", &WamNode::staticForceEstimation, this);
-    cp_impedance_control_srv = n_.advertiseService("cp_impedance_control", &WamNode::cpImpedanceControl, this);
+    // cp_impedance_control_srv = n_.advertiseService("cp_impedance_control", &WamNode::cpImpedanceControl, this);
 
     ROS_INFO("wam services now advertised");
 
     //connect systems for getting gravity
     // connectSystems();
+
+    // increasing the velocity limit
+    mypm->getSafetyModule()->setVelocityLimit(1.5);
+
 }
 
 template<size_t DOF>
@@ -705,6 +712,7 @@ bool WamNode<DOF>::holdJPos(wam_srvs::Hold::Request &req, wam_srvs::Hold::Respon
     return true;
 }
 
+/*
 // Function to hold WAM end effector Cartesian Position
 // lpetrich 06/2019
 template<size_t DOF>
@@ -758,7 +766,9 @@ bool WamNode<DOF>::holdCPos(wam_srvs::HoldGains::Request &req, wam_srvs::HoldGai
     }
     return true;
 }
+*/
 
+/*
 // Function to move WAM to a Cartesian Position with impedance control
 // fhaghverd 11/2023
 template<size_t DOF>
@@ -875,6 +885,8 @@ bool WamNode<DOF>::cpImpedanceControl(wam_srvs::CP_ImpedanceControl::Request &re
     return true;
     
 }
+*/
+
 // Function to hold WAM end effector Orientation
 // lpetrich 06/2019
 template<size_t DOF>
@@ -1077,6 +1089,36 @@ void WamNode<DOF>::getCartesianForce()
 
     systems::forceConnect(wam.jtSum.output, staticForceEstimator.jtInput);
     systems::forceConnect(staticForceEstimator.cartesianForceOutput, exposedCartesianForce.input);
+
+    // force_estimated = true;
+        //res.success = true;
+} 
+
+
+template<size_t DOF>
+void WamNode<DOF>::getDynamicCartesianForce()
+{   
+    //Acceleration
+    systems::forceConnect(wam.jvOutput, hp.input);
+    systems::forceConnect(hp.output, jaCur.input);
+ 
+    //Dynamics
+    systems::forceConnect(wam.jpOutput, dynamics.jpInputDynamics);
+    systems::forceConnect(wam.jvOutput, dynamics.jvInputDynamics);
+    systems::forceConnect(jaCur.output, dynamics.jaInputDynamics);
+    systems::forceConnect(dynamics.dynamicsFeedFWD, dynamicForceEstimator.dynamics);
+
+    //Jacobian
+    systems::forceConnect(wam.kinematicsBase.kinOutput, getWAMJacobian.kinInput);
+    systems::forceConnect(getWAMJacobian.output, dynamicForceEstimator.Jacobian);
+
+    //Gravity
+    systems::forceConnect(wam.kinematicsBase.kinOutput, gravityTerm.kinInput);
+    systems::forceConnect(wam.gravity.output, dynamicForceEstimator.g);
+
+    //Dynamic Force
+    systems::forceConnect(wam.jtSum.output, dynamicForceEstimator.jtInput);
+    systems::forceConnect(dynamicForceEstimator.cartesianForceOutput, exposedDynamicCartesianForce.input);
 
     // force_estimated = true;
         //res.success = true;
@@ -1486,7 +1528,7 @@ bool WamNode<DOF>::forceTorqueTool(wam_srvs::ForceTorqueTool::Request &req, wam_
     return true;
 }
 
-
+/*
 // lpetrich works 06/2019
 template<size_t DOF>
 bool WamNode<DOF>::joyForceTorqueBase(wam_srvs::ForceTorque::Request &req, wam_srvs::ForceTorque::Response &res) {
@@ -1597,7 +1639,9 @@ bool WamNode<DOF>::joyForceTorqueBase(wam_srvs::ForceTorque::Request &req, wam_s
     systems_connected = true;
     return true;
 }
+*/
 
+/*
 // Function to apply a force and torque to the WAM end effector with respect to the tool frame
 // lpetrich 06/2019
 template<size_t DOF>
@@ -1716,6 +1760,7 @@ bool WamNode<DOF>::joyForceTorqueTool(wam_srvs::ForceTorque::Request &req, wam_s
     systems_connected = true;
     return true;
 }
+*/
 
 template<size_t DOF>
 bool WamNode<DOF>::linkArm(wam_srvs::Link::Request &req, wam_srvs::Link::Response &res) {
@@ -1786,7 +1831,7 @@ bool WamNode<DOF>::playMotion(wam_srvs::Play::Request &req, wam_srvs::Play::Resp
     // Build spline between recorded points
     std::string path = "/home/robot/motions/" + req.path;
     ROS_INFO_STREAM("Playing back motion from : " << path);
-    log::Reader<jp_sample_type> lr(path.c_str());
+    barrett::log::Reader<jp_sample_type> lr(path.c_str());
     std::vector<jp_sample_type> vec;
     for (size_t i = 0; i < lr.numRecords(); ++i) {
         vec.push_back(lr.getRecord());
@@ -2372,6 +2417,25 @@ void WamNode<DOF>::publishCartesianForce(ProductManager& pm) {
     wam_cartforce_pub.publish(wam_cartforce);
 }
 
+//Function to update the WAM publisher for force
+template<size_t DOF>
+void WamNode<DOF>::publishDynamicCartesianForce(ProductManager& pm) {
+    getDynamicCartesianForce();
+    //Current values to be published
+    
+    cf_type cforce = exposedDynamicCartesianForce.getValue(); // for force
+
+    // ROS_INFO_STREAM("Gravity Vector: " << jg);
+
+    //publishing wam_msgs/CartForce to wam/cart_force
+    // wam_cartforce.data = cforce;
+    for (size_t i = 0; i < 3; i++) {
+        wam_dynamiccartforce.data[i] = cforce[i];
+    }
+    
+    wam_dynamiccartforce_pub.publish(wam_dynamiccartforce);
+}
+
 /*
 //Function to update the real-time control loops
 template<size_t DOF>
@@ -2631,6 +2695,7 @@ int wam_main(int argc, char** argv, ProductManager& pm, systems::Wam<DOF>& wam)
         wam_node.publishWam(pm);
         wam_node.publishGravity(pm);
         wam_node.publishCartesianForce(pm);
+        wam_node.publishDynamicCartesianForce(pm);
         wam_node.updateRT(pm);
         pub_rate.sleep();
     }
