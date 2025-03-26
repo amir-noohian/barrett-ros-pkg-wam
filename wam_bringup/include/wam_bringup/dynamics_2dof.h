@@ -20,8 +20,8 @@
 #include <barrett/systems.h>
 #include <barrett/math/kinematics.h> 
 
-#include <wam_bringup/PI_4D.h>
-#include <wam_bringup/Y_4D.h>
+#include <wam_bringup/PI_2dof.h>
+#include <wam_bringup/Y_2dof.h>
 
 // #include <PI_4D_gravity.hpp>
 // #include <Y_4D_gravity.hpp>

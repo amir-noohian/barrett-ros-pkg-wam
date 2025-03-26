@@ -41,7 +41,7 @@
 // #include "wam_bringup/impedence_controller.h"
 #include "wam_bringup/static_force_estimator_withg.h"
 #include "wam_bringup/dynamic_force_estimator.h"
-#include "wam_bringup/dynamics.h"
+#include "wam_bringup/dynamics_4dof.h"
 #include "wam_bringup/get_jacobian_system.h"
 
 #include <barrett/systems/exposed_output.h>

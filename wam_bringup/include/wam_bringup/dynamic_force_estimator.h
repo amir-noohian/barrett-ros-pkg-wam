@@ -54,6 +54,7 @@ protected:
 	ct_type ct;
 
 	jt_type jt_sys, G, Dynamics;
+	// Eigen::VectorXd Dynamics;
 	jt_type jt;
 	Eigen::VectorXd estimatedF;
 
@@ -66,7 +67,19 @@ protected:
 
 		Eigen::ColPivHouseholderQR<Eigen::MatrixXd> system(J.transpose());
 
-		jt = -jt_sys + (G);
+		// jt[0] = -jt_sys[0] + Dynamics[0];
+		// jt[1] = -jt_sys[1] + Dynamics[1];
+		// jt[2] = -jt_sys[2] + Dynamics[2];
+		// jt[3] = -jt_sys[3] + Dynamics[3];
+
+		// jt[4] = -jt_sys[4] + G[4];
+		// jt[5] = -jt_sys[5] + G[5];
+		// jt[6] = -jt_sys[6] + G[6];
+
+
+		jt.head(4) = -jt_sys.head(4) + Dynamics.head(4);
+		jt.tail(3) = -jt_sys.tail(3) + G.tail(3);
+		// jt = -jt_sys + (G);
 		estimatedF = system.solve(jt);
 
 		computedF << estimatedF[0], estimatedF[1], estimatedF[2];

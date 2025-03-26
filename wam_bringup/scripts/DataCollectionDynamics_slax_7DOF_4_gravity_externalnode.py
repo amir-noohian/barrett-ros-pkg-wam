@@ -271,7 +271,7 @@ class DataRecorder(object):
         rospy.sleep(2)
         self.robot.joint(False)
 
-        initial_angle, initial_velocity = self.joint_traj_excite(0.0)
+        initial_angle, initial_velocity = self.joint_traj_eval(0.0)
         self.robot.joint_move(initial_angle)
         rospy.sleep(2)
         self.robot.joint(False)
@@ -280,7 +280,7 @@ class DataRecorder(object):
         self.robot.collect = True
         while True:
             t = time.time() - start_time
-            joint_angle, joint_velocity = self.joint_traj_excite(t)
+            joint_angle, joint_velocity = self.joint_traj_eval(t)
             self.robot.joint_vel_cmd(joint_velocity)
             if robot.check_joint_bound() or t > self.MAX_TIME:
                 break
