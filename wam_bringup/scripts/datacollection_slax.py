@@ -171,7 +171,7 @@ class DataRecorder(object):
         qdot = A * f * np.array([np.cos(f*t), np.cos(f*t), np.cos(f*t), np.cos(f*t), 0, 0, 0])
         return q, qdot
 
-    def joint_traj_evalforce(self, t, f=0.3):
+    def joint_traj_evalforce(self, t, f=0.2):
         f *= 2 * math.pi
         q = np.array([
             0.5 * np.sin(f * t),  # First joint
