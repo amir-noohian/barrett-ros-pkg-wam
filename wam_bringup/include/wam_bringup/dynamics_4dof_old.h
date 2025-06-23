@@ -20,8 +20,8 @@
 #include <barrett/systems.h>
 #include <barrett/math/kinematics.h> 
 
-#include <wam_bringup/beta.h>
-#include <wam_bringup/W.h>
+#include <wam_bringup/PI_4dof.h>
+#include <wam_bringup/Y_4dof.h>
 
 using namespace barrett;
 
@@ -57,8 +57,8 @@ protected:
 	jp_type tmp_theta_pos;
 	jv_type tmp_theta_vel;
 	ja_type tmp_theta_acc;
-	Eigen::Matrix<double, 4, 30> W;
-	Eigen::Matrix<double, 30, 1> beta;
+	Eigen::Matrix<double, 4, 30> Y;
+	Eigen::Matrix<double, 30, 1> P;
 	Eigen::Vector4d ThetaInput;
 	Eigen::Vector4d ThetadotInput;
 	Eigen::Vector4d ThetaddotInput;
@@ -72,10 +72,10 @@ protected:
 		ThetadotInput << tmp_theta_vel[0], tmp_theta_vel[1], tmp_theta_vel[2], tmp_theta_vel[3];
 		tmp_theta_acc = this->jaInputDynamics.getValue();
 		ThetaddotInput << tmp_theta_acc[0], tmp_theta_acc[1], tmp_theta_acc[2], tmp_theta_acc[3];
-		W = calculate_W_eigen(ThetaInput, ThetadotInput, ThetaddotInput);
-		beta = initialize_beta();
+		Y = calculate_Y_eigen(ThetaInput, ThetadotInput, ThetaddotInput);
+		P = initialize_pi();
 		
-		FeedFwd = W * beta;
+		FeedFwd = Y * P;
 
 		dynFeedFWD.head(4) = FeedFwd;
 
