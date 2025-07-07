@@ -22,8 +22,8 @@ class WAM(object):
         self.vel = []
         self.joint_state_data = []
         self.joint_gravity_data = []
-        self.joint_angle_bound = np.array([[-2.4, 2.4], [-1.8, 1.8], [-2.5, 2.5], [-0.8, 3.0]]) # the reference angle is the zero pose.
-        self.num_joints = 4
+        self.joint_angle_bound = np.array([[-2.4, 2.4], [-1.8, 1.8], [-2.5, 2.5], [-0.8, 3.0], [-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]]) # the reference angle is the zero pose.
+        self.num_joints = 7
         self.joint = rospy.ServiceProxy('/wam/hold_joint_pos', Hold) 
         self.collect = False
         self._init_joint_states_listener()
@@ -109,10 +109,10 @@ class WAM(object):
     
     def go_zero(self):
         self._wait_for_joint_states()
-        self.joint_move([0.0, 0.0, 0.0, 0.0])
+        self.joint_move([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     def stop(self):
-        self.joint_vel_cmd([0.0, 0.0, 0.0, 0.0])
+        self.joint_vel_cmd([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     def check_joint_bound(self):
         current_joint_angle = self.pos
@@ -132,19 +132,19 @@ class DataRecorder(object):
         self.robot = robot
         self.joint_num = joint_num
         self.robot._wait_for_joint_states()
-        self.MAX_TIME = 10
+        self.MAX_TIME = 15
         self.control_frequency = 500
         self.rate = rospy.Rate(self.control_frequency)
         self.reference_data = []
 
     def joint_traj_eval(self, t, f=0.3, A=0.5):
         f *= 2 * math.pi
-        q = A * np.array([np.sin(f*t), np.sin(f*t), np.sin(f*t), np.sin(f*t)])
-        qdot = A * f * np.array([np.cos(f*t), np.cos(f*t), np.cos(f*t), np.cos(f*t)])
+        q = A * np.array([np.sin(f*t), np.sin(f*t), np.sin(f*t), np.sin(f*t), 0.0, 0.0, 0.0])
+        qdot = A * f * np.array([np.cos(f*t), np.cos(f*t), np.cos(f*t), np.cos(f*t), 0.0, 0.0, 0.0])
 
-        # mask = np.array([0, 1, 0, 1])
-        # q = q * mask
-        # qdot = qdot * mask
+        mask = np.array([1, 1, 1, 1, 0, 0, 0])
+        q = q * mask
+        qdot = qdot * mask
 
         return q, qdot
 
@@ -257,7 +257,7 @@ if __name__ == '__main__':
     rospy.init_node("data_collection_node")
     
     robot = WAM()
-    recorder = DataRecorder(robot, 4)
+    recorder = DataRecorder(robot, 7)
 
     # Pass the machine type to collect_dynamics
     recorder.collect_dynamics(machine=args.machine)

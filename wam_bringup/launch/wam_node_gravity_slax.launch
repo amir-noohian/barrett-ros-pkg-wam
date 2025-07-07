@@ -1,4 +1,0 @@
-<launch>
-	<env name="BARRETT_CONFIG_FILE" value="/home/rowley/amir/catkin_ws/src/barrett-ros-pkg-wam/wam_bringup/launch/config_gravity_slax/default.conf"/>
-  <node name="wam_node_gravity" type="wam_node_gravity" pkg="wam_bringup_wam" output="screen" />
-</launch>

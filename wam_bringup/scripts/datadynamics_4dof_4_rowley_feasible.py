@@ -131,7 +131,7 @@ class DataRecorder(object):
         self.robot = robot
         self.joint_num = joint_num
         self.robot._wait_for_joint_states()
-        self.MAX_TIME = 15
+        self.MAX_TIME = 60
         self.control_frequency = 500
         self.rate = rospy.Rate(self.control_frequency)
 
@@ -205,7 +205,7 @@ class DataRecorder(object):
                 q[k] += (a[k, l] * sin_wt - b[k, l] * cos_wt) / w
                 qdot[k] += a[k, l] * cos_wt + b[k, l] * sin_wt
 
-        factor = np.array([1,1,1,0.9])
+        factor = np.array([1,1,1,0.8])
 
         # Pad with zeros to make 7-DOF
         q_full = q * factor
@@ -246,7 +246,7 @@ class DataRecorder(object):
         rospy.sleep(2)
         self.robot.joint(False)
 
-        initial_angle, initial_velocity = self.joint_traj_eval(0.0)
+        initial_angle, initial_velocity = self.joint_traj_excite(0.0)
         self.robot.joint_move(initial_angle)
         rospy.sleep(2)
         self.robot.joint(False)
@@ -255,7 +255,7 @@ class DataRecorder(object):
         self.robot.collect = True
         while True:
             t = time.time() - start_time
-            joint_angle, joint_velocity = self.joint_traj_eval(t)
+            joint_angle, joint_velocity = self.joint_traj_excite(t)
             self.robot.joint_vel_cmd(joint_velocity)
             if robot.check_joint_bound() or t > self.MAX_TIME:
                 break
