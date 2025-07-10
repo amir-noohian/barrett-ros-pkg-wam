@@ -146,7 +146,7 @@ class DataRecorder(object):
 
         return q, qdot
 
-    def joint_traj_excite(self, t, omega_f=0.314, factor=1.0):
+    def joint_traj_excite(self, t, omega_f=0.314):
         """
         Compute joint positions and velocities for a 4-DOF trajectory,
         and expand them to 7-DOF by zero-padding the last 3 joints.
@@ -205,6 +205,8 @@ class DataRecorder(object):
 
                 q[k] += (a[k, l] * sin_wt - b[k, l] * cos_wt) / w
                 qdot[k] += a[k, l] * cos_wt + b[k, l] * sin_wt
+
+        factor = np.array([1,1,1,0.8,1,1,1])
 
         # Pad with zeros to make 7-DOF
         q_full = np.concatenate([q, np.zeros(3)]) * factor
